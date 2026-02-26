@@ -1,0 +1,182 @@
+Build a vibrant comic-style cultural festival website named “AAYAM 2026” for SGSITS Indore.
+
+IMPORTANT:
+Do NOT use Prisma.
+Do NOT use PostgreSQL.
+Do NOT use NextAuth.
+Do NOT configure external database.
+Do NOT add deployment configuration.
+Keep it frontend-first and fully runnable without environment variables.
+
+TECH STACK:
+- Next.js 14 (App Router)
+- TypeScript
+- Tailwind CSS
+- Framer Motion
+- No database
+- No backend integration
+- Use localStorage for temporary data
+
+-----------------------------------
+
+THEME & DESIGN STYLE:
+
+Design must be:
+- Comic book style
+- Graffiti-inspired
+- Doodle elements
+- Bold outlines
+- Vibrant solid colors
+- Playful but premium
+
+Color Palette:
+- Electric Blue
+- Bright Yellow
+- Hot Pink
+- Lime Green
+- Black & White contrast
+
+Visual Style:
+- Thick borders
+- Sticker-like elements
+- Drop shadows
+- Comic speech bubbles
+- Handwritten font style headings
+- Fun decorative elements (guitar, boombox, film reel, speakers)
+
+Background:
+- Patterned graffiti texture
+- Floating animated stickers
+- Subtle bouncing or rotating comic elements
+
+-----------------------------------
+
+WEBSITE STRUCTURE:
+
+1) HOME PAGE
+
+- Full-screen hero
+- Big comic-style title: “AAYAM 2026”
+- Subtitle: “SGSITS Annual Cultural Fest”
+- Banner: “13–14 March 2026”
+- Add LIVE COUNTDOWN TIMER to:
+    13 March 2026, 09:00 AM IST
+- Timer must update every second using useEffect
+
+- Add animated comic shapes in background
+- Buttons:
+    • Explore Events
+    • Get Fest Pass
+    • Login
+
+- Add smooth scroll and page reveal animations
+
+-----------------------------------
+
+2) EVENTS PAGE
+
+- Large comic-style event cards
+- Each card should show:
+   - Event name
+   - Date
+   - Short description
+   - Team/Solo info
+   - Prize
+
+- Card style:
+   - Thick black border
+   - Shadow
+   - Slight rotation effect
+   - Hover scale animation
+   - Fun tilt animation on hover
+
+- Clicking card opens animated modal (NOT new page)
+- Modal includes:
+   - Full description
+   - Rules
+   - Rounds
+   - Button: “Register on Unstop”
+- That button redirects to dummy external URL
+
+-----------------------------------
+
+3) FEST PASS REGISTRATION PAGE
+
+Route: /fest-pass
+
+- Simple form:
+   Name
+   Email
+   College
+   Phone
+
+On submit:
+- Generate random Entry ID:
+   Format: AAYAM-26-XXXXX
+- Save data to localStorage
+- Show Digital Comic-Style Fest Pass
+- Display Entry ID
+- Add comic ticket design
+
+-----------------------------------
+
+4) LOGIN PAGE
+
+- Simple login form
+- Store user in localStorage
+- No real authentication backend
+
+-----------------------------------
+
+5) STUDENT DASHBOARD
+
+Route: /dashboard
+
+- Read user info from localStorage
+- Show:
+   - Profile info
+   - Entry ID
+   - Registered events (store in localStorage)
+- Add simple TEAM SYSTEM:
+   - Create team
+   - Add team members
+   - Store team in localStorage
+   - Show team list
+
+-----------------------------------
+
+ANIMATIONS REQUIRED:
+
+- Framer Motion page transitions
+- Section reveal animations
+- Card hover tilt
+- Floating decorative elements
+- Countdown animation
+- Smooth scroll
+- Comic bounce effects
+
+-----------------------------------
+
+IMPORTANT:
+
+- Ensure project runs with:
+   npm install
+   npm run dev
+
+- Do NOT require environment variables.
+- Do NOT add server-side authentication.
+- Do NOT add database configuration.
+- Keep everything stable and runnable immediately.
+
+-----------------------------------
+
+DELIVER:
+A fully working comic-style cultural fest website with:
+- Countdown timer
+- Comic animations
+- Event modal system
+- Fest pass generation
+- Dashboard
+- Team creation
+- Unstop redirect
+- No backend errors
