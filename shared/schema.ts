@@ -1,18 +1,40 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+export const userSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email"),
+  college: z.string().min(1, "College is required"),
+  phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  entryId: z.string().optional(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export type User = z.infer<typeof userSchema>;
+
+export const teamMemberSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  role: z.string().optional(),
 });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+export type TeamMember = z.infer<typeof teamMemberSchema>;
+
+export const teamSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Team name is required"),
+  members: z.array(teamMemberSchema),
+});
+
+export type Team = z.infer<typeof teamSchema>;
+
+export const eventSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  date: z.string(),
+  description: z.string(),
+  fullDescription: z.string(),
+  type: z.enum(["Solo", "Team"]),
+  prize: z.string(),
+  rules: z.array(z.string()),
+  rounds: z.number(),
+});
+
+export type FestEvent = z.infer<typeof eventSchema>;
