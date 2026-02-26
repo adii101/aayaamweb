@@ -23,7 +23,7 @@ export function Navbar() {
     >
       <div className="max-w-6xl mx-auto bg-white comic-border comic-shadow flex items-center justify-between p-3 rounded-2xl">
         <Link href="/" className="font-display text-3xl md:text-4xl text-[hsl(var(--tertiary))] text-comic-stroke tracking-widest cursor-pointer hover:scale-105 transition-transform">
-          AAYAM <span className="text-[hsl(var(--secondary))]">26</span>
+          AAYAAM <span className="text-[hsl(var(--secondary))]">26</span>
         </Link>
 
         {/* Desktop Nav */}

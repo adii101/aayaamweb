@@ -20,7 +20,7 @@ export default function Login() {
       email: email,
       college: "SGSITS (Dummy)",
       phone: "0000000000",
-      entryId: "AAYAM-26-DUMMY"
+      entryId: "AAYAAM-26-DUMMY"
     });
     
     setLocation('/dashboard');

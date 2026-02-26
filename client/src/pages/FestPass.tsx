@@ -41,7 +41,7 @@ export default function FestPass() {
     
     // Simulate API delay and processing
     setTimeout(() => {
-      const generatedId = `AAYAM-26-${Math.floor(10000 + Math.random() * 90000)}`;
+      const generatedId = `AAYAAM-26-${Math.floor(10000 + Math.random() * 90000)}`;
       
       saveUser({
         ...data,
@@ -167,7 +167,7 @@ export default function FestPass() {
                   
                   {/* Left Side: Branding */}
                   <div className="bg-[hsl(var(--primary))] p-6 md:w-1/3 flex flex-col items-center justify-center border-b-4 md:border-b-0 md:border-r-4 border-dashed border-black">
-                    <h2 className="font-display text-5xl text-black text-center rotate-[-10deg]">AAYAM<br/><span className="text-white text-comic-stroke">2026</span></h2>
+                    <h2 className="font-display text-5xl text-black text-center rotate-[-10deg]">AAYAAM<br/><span className="text-white text-comic-stroke">2026</span></h2>
                     <div className="mt-8 font-bold text-center uppercase tracking-widest bg-black text-white px-4 py-2 rounded-xl">
                       VIP PASS
                     </div>

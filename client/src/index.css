@@ -9,7 +9,7 @@
   --font-body: 'Comic Neue', cursive;
 
   /* Vibrant Comic Palette */
-  --background: 60 100% 97%;     /* Light yellow-ish white */
+  --background: 190 100% 50%;     /* Electric Blue - Solid Color */
   --foreground: 0 0% 0%;         /* Deep Black */
   
   --primary: 54 100% 50%;        /* Bright Yellow */
@@ -18,7 +18,7 @@
   --secondary: 330 100% 55%;     /* Hot Pink */
   --secondary-foreground: 0 0% 100%;
   
-  --tertiary: 190 100% 50%;      /* Electric Blue */
+  --tertiary: 60 100% 50%;       /* Solid Yellow */
   --tertiary-foreground: 0 0% 0%;
 
   --accent: 120 100% 50%;        /* Lime Green */
@@ -74,7 +74,7 @@
     content: '';
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(255, 255, 255, 0.6); /* Fade out the dots slightly */
+    background: rgba(255, 255, 255, 0.1); /* Reduced fade for more solid color */
     z-index: -1;
   }
 

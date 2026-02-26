@@ -103,7 +103,7 @@ export default function Home() {
         >
           <span className="absolute -top-8 -left-12 font-display text-3xl text-[hsl(var(--accent))] text-comic-stroke rotate-[-15deg]">SGSITS Presents</span>
           <h1 className="text-7xl sm:text-8xl md:text-[150px] leading-none mb-2 text-[hsl(var(--primary))] text-comic-stroke-lg drop-shadow-[8px_8px_0_rgba(0,0,0,1)] relative z-10">
-            AAYAM <span className="text-[hsl(var(--secondary))] inline-block transform hover:rotate-12 transition-transform">26</span>
+            AAYAAM <span className="text-[hsl(var(--secondary))] inline-block transform hover:rotate-12 transition-transform">26</span>
           </h1>
           <div className="bg-white comic-border comic-shadow-sm px-6 py-2 rounded-full inline-block mt-4 -rotate-2 transform hover:rotate-0 transition-transform cursor-default">
             <h2 className="text-xl md:text-3xl font-bold uppercase tracking-widest m-0 text-black shadow-none">
