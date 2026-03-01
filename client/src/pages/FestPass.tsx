@@ -9,13 +9,14 @@ import { ComicCard } from "@/components/ComicCard";
 import { ComicButton } from "@/components/ComicButton";
 import { useUser } from "@/hooks/use-local-store";
 import { QrCode, Ticket, ShieldCheck, Download } from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
 
 // Local schema definition matching the prompt requirements
 const passFormSchema = z.object({
   name: z.string().min(2, "Name is too short"),
-  email: z.string().email("Invalid email, hero!"),
+  email: z.string().email("Invalid email, hero!").optional(),
   college: z.string().min(2, "Where do you study?"),
-  phone: z.string().min(10, "Phone number must be at least 10 digits").max(10, "10 digits max"),
+  phone: z.string().regex(/^\d{10}$/, "Phone must be exactly 10 digits (no +91, spaces, or letters)"),
 });
 
 type PassFormValues = z.infer<typeof passFormSchema>;
@@ -26,7 +27,7 @@ export default function FestPass() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showTicket, setShowTicket] = useState(!!user?.entryId);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<PassFormValues>({
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm<PassFormValues>({
     resolver: zodResolver(passFormSchema),
     defaultValues: user ? {
       name: user.name,
@@ -128,9 +129,12 @@ export default function FestPass() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="font-display text-2xl uppercase tracking-wider block">Hotline (Phone)</label>
+                      <label className="font-display text-2xl uppercase tracking-wider block">Hotline (10 digits, no +91)</label>
                       <input 
-                        {...register("phone")}
+                        {...register("phone", {
+                          onChange: (e) => setValue("phone", e.target.value.replace(/\D/g, "").slice(0, 10)),
+                        })}
+                        inputMode="numeric"
                         className="w-full p-4 border-4 border-black rounded-xl text-lg font-bold focus:outline-none focus:ring-4 focus:ring-yellow-400 transition-all comic-shadow-sm"
                         placeholder="9876543210"
                         maxLength={10}
@@ -191,6 +195,16 @@ export default function FestPass() {
                         <QrCode className="text-white w-16 h-16" strokeWidth={1.5} />
                       </div>
                     </div>
+                    {user?.entryId && (
+                      <div className="mt-4 flex justify-center">
+                        <QRCodeCanvas
+                          value={`aayaam-pass:${user.entryId}`}
+                          size={100}
+                          level="M"
+                          includeMargin={false}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

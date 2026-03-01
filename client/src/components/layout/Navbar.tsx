@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useUser } from "@/hooks/use-local-store";
 import { motion } from "framer-motion";
-import { UserCircle, Ticket, Calendar, Home, LogOut } from "lucide-react";
+import { UserCircle, Calendar, Home, LogOut } from "lucide-react";
 import { ComicButton } from "../ComicButton";
 
 export function Navbar() {
@@ -11,7 +11,6 @@ export function Navbar() {
   const links = [
     { href: "/", label: "Home", icon: Home },
     { href: "/events", label: "Events", icon: Calendar },
-    { href: "/fest-pass", label: "Fest Pass", icon: Ticket },
   ];
 
   return (
@@ -22,21 +21,24 @@ export function Navbar() {
       className="fixed top-0 left-0 right-0 z-50 p-4"
     >
       <div className="max-w-6xl mx-auto bg-white comic-border comic-shadow flex items-center justify-between p-3 rounded-2xl">
-        <Link href="/" className="font-display text-3xl md:text-4xl text-[hsl(var(--tertiary))] text-comic-stroke tracking-widest cursor-pointer hover:scale-105 transition-transform">
-          AAYAAM <span className="text-[hsl(var(--secondary))]">26</span>
-        </Link>
+        <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400 }}>
+          <Link href="/" className="font-display text-3xl md:text-4xl text-[hsl(var(--tertiary))] text-comic-stroke tracking-widest cursor-pointer block">
+            AAYAAM <span className="text-[hsl(var(--secondary))]">26</span>
+          </Link>
+        </motion.div>
 
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-6">
           {links.map((link) => (
-            <Link 
-              key={link.href} 
-              href={link.href}
-              className={`font-bold text-xl uppercase tracking-wide hover:text-[hsl(var(--secondary))] hover:-translate-y-1 transition-all flex items-center gap-2 ${location === link.href ? 'text-[hsl(var(--secondary))] underline decoration-4 underline-offset-4' : 'text-black'}`}
-            >
-              <link.icon size={20} strokeWidth={3} />
-              {link.label}
-            </Link>
+            <motion.div key={link.href} whileHover={{ y: -2 }} transition={{ type: "spring", stiffness: 400 }}>
+              <Link 
+                href={link.href}
+                className={`font-bold text-xl uppercase tracking-wide hover:text-[hsl(var(--secondary))] flex items-center gap-2 ${location === link.href ? 'text-[hsl(var(--secondary))] underline decoration-4 underline-offset-4' : 'text-black'}`}
+              >
+                <link.icon size={20} strokeWidth={3} />
+                {link.label}
+              </Link>
+            </motion.div>
           ))}
           
           <div className="w-1 h-8 bg-black mx-2 rounded-full"></div>

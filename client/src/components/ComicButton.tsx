@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, HTMLMotionProps } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { ComicPow } from './ComicPow';
 
 interface ComicButtonProps extends HTMLMotionProps<"button"> {
   variant?: 'primary' | 'secondary' | 'tertiary' | 'accent' | 'destructive' | 'white';
   size?: 'sm' | 'md' | 'lg';
+  showPow?: boolean;
   children: React.ReactNode;
 }
 
@@ -13,8 +15,19 @@ export function ComicButton({
   className, 
   variant = 'primary', 
   size = 'md',
+  showPow = true,
+  onPointerDown: onPointerDownProp,
   ...props 
 }: ComicButtonProps) {
+  const [pow, setPow] = useState(false);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (showPow) {
+      setPow(true);
+      setTimeout(() => setPow(false), 450);
+    }
+    onPointerDownProp?.(e);
+  };
   
   const variants = {
     primary: "bg-[hsl(var(--primary))] text-black",
@@ -33,10 +46,22 @@ export function ComicButton({
 
   return (
     <motion.button
-      whileHover={{ scale: 1.05, rotate: Math.random() * 4 - 2 }}
-      whileTap={{ scale: 0.95, y: 4, x: 4, boxShadow: "0px 0px 0px 0px rgba(0,0,0,1)" }}
+      onPointerDown={handlePointerDown}
+      whileHover={{
+        scale: 1.08,
+        rotate: 2,
+        y: -2,
+        transition: { type: "spring", stiffness: 400, damping: 12 },
+      }}
+      whileTap={{
+        scale: 0.92,
+        y: 6,
+        x: 4,
+        boxShadow: "0px 0px 0px 0px rgba(0,0,0,1)",
+        transition: { type: "spring", stiffness: 500, damping: 20 },
+      }}
       className={cn(
-        "font-display uppercase tracking-wider",
+        "font-display uppercase tracking-wider relative overflow-visible",
         "comic-border comic-shadow transition-colors duration-200",
         variants[variant],
         sizes[size],
@@ -47,6 +72,7 @@ export function ComicButton({
       }}
       {...props}
     >
+      {showPow && <ComicPow show={pow} onComplete={() => setPow(false)} />}
       {children}
     </motion.button>
   );

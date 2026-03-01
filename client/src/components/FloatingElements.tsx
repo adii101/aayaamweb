@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Music, Zap, Star, Zap as Bolt, Camera } from 'lucide-react';
+import { Music, Zap, Star, Bolt, Camera } from 'lucide-react';
 
 export function FloatingElements() {
   const elements = [
@@ -18,12 +18,12 @@ export function FloatingElements() {
           className={`absolute ${el.color}`}
           style={{ top: el.top, left: el.left, right: el.right, bottom: el.bottom }}
           animate={{
-            y: [0, -20, 0],
-            rotate: [0, 10, -10, 0],
-            scale: [1, 1.1, 1],
+            y: [0, -25, 0],
+            rotate: [0, 12, -12, 0],
+            scale: [1, 1.15, 1],
           }}
           transition={{
-            duration: 4,
+            duration: 3.5,
             repeat: Infinity,
             delay: el.delay,
             ease: "easeInOut"
@@ -37,14 +37,16 @@ export function FloatingElements() {
         </motion.div>
       ))}
       
-      {/* Abstract Comic Shapes */}
+      {/* Abstract Comic Shapes - bouncier */}
       <motion.div 
         className="absolute w-32 h-32 bg-[hsl(var(--primary))] rounded-full comic-border comic-shadow-sm -top-10 -left-10"
-        animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 3, repeat: Infinity }}
+        animate={{ scale: [1, 1.12, 1] }}
+        transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div 
         className="absolute w-40 h-16 bg-[hsl(var(--secondary))] comic-border comic-shadow-sm bottom-40 -right-8 rotate-12"
-        animate={{ rotate: [12, 15, 12] }} transition={{ duration: 5, repeat: Infinity }}
+        animate={{ rotate: [12, 18, 12], scale: [1, 1.05, 1] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
       />
       
       {/* Halftone dots blob */}

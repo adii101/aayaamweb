@@ -3,19 +3,48 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { ComicCard } from "@/components/ComicCard";
 import { ComicButton } from "@/components/ComicButton";
-import { useUser, useTeams } from "@/hooks/use-local-store";
-import { User, Users, Plus, ShieldAlert, Award } from "lucide-react";
-import type { Team, TeamMember } from "@shared/schema";
+import { useUser } from "@/hooks/use-local-store";
+import { User, Ticket } from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
 
+type RegistrationMode = "attend" | "participate";
+
+type Registration = {
+  _id: string;
+  eventId: string;
+  eventName: string;
+  mode: RegistrationMode;
+  qrCode?: string;
+};
 export default function Dashboard() {
   const [location, setLocation] = useLocation();
   const { user, isLoading: userLoading } = useUser();
-  const { teams, saveTeam, updateTeam, isLoading: teamsLoading } = useTeams();
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [regsLoading, setRegsLoading] = useState(true);
 
-  const [isCreatingTeam, setIsCreatingTeam] = useState(false);
-  const [newTeamName, setNewTeamName] = useState("");
-  const [newMemberName, setNewMemberName] = useState("");
-  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  useEffect(() => {
+    const phone = user?.phone;
+    if (!phone) return;
+    const controller = new AbortController();
+    async function loadRegistrations(phoneNum: string) {
+      try {
+        setRegsLoading(true);
+        const res = await fetch(
+          `/api/registrations?phone=${encodeURIComponent(phoneNum)}`,
+          { credentials: "include", signal: controller.signal },
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as Registration[];
+        setRegistrations(data);
+      } catch {
+        // ignore errors in UI
+      } finally {
+        setRegsLoading(false);
+      }
+    }
+    loadRegistrations(phone);
+    return () => controller.abort();
+  }, [user?.phone]);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -24,41 +53,16 @@ export default function Dashboard() {
     }
   }, [user, userLoading, setLocation]);
 
-  if (userLoading || teamsLoading || !user) {
+  if (userLoading || !user) {
     return <div className="min-h-screen flex items-center justify-center font-display text-4xl">LOADING HQ...</div>;
   }
-
-  const handleCreateTeam = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTeamName) return;
-
-    const newTeam: Team = {
-      id: `team-${Date.now()}`,
-      name: newTeamName,
-      members: [{ name: user.name, role: "Captain" }] // Creator is captain
-    };
-
-    saveTeam(newTeam);
-    setNewTeamName("");
-    setIsCreatingTeam(false);
-  };
-
-  const handleAddMember = (e: React.FormEvent, team: Team) => {
-    e.preventDefault();
-    if (!newMemberName) return;
-
-    const member: TeamMember = { name: newMemberName, role: "Member" };
-    updateTeam({ ...team, members: [...team.members, member] });
-    setNewMemberName("");
-    setSelectedTeamId(null);
-  };
 
   return (
     <div className="min-h-screen pt-28 pb-20 px-4 max-w-6xl mx-auto">
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Profile Sidebar */}
+        {/* Profile Sidebar + My Events */}
         <div className="lg:col-span-1 space-y-6">
           <motion.div initial={{ x: -50, opacity: 0 }} animate={{ x: 0, opacity: 1 }}>
             <ComicCard bgVariant="primary" tiltAmount={0} className="text-center relative">
@@ -76,117 +80,60 @@ export default function Dashboard() {
                     {user.entryId || "NO PASS YET"}
                   </p>
                 </div>
-                {!user.entryId && (
-                  <ComicButton variant="accent" size="sm" className="mt-4 w-full" onClick={() => setLocation('/fest-pass')}>
-                    Get Pass Now
-                  </ComicButton>
-                )}
               </div>
+            </ComicCard>
+          </motion.div>
+
+          <motion.div initial={{ x: -50, opacity: 0 }} animate={{ x: 0, opacity: 1 }}>
+            <ComicCard bgVariant="white" tiltAmount={0} className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-display text-2xl flex items-center gap-2">
+                  <Ticket size={24} /> My Events
+                </h3>
+              </div>
+              {regsLoading ? (
+                <p className="font-bold text-gray-500">Loading your missions...</p>
+              ) : registrations.length === 0 ? (
+                <p className="font-bold text-gray-500">
+                  You haven't registered for any events yet. Head to the EVENTS page to join the action!
+                </p>
+              ) : (
+                <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
+                  {registrations.map((reg) => (
+                    <div
+                      key={reg._id}
+                      className="flex gap-3 items-center bg-gray-50 comic-border rounded-xl p-3"
+                    >
+                      {reg.mode === "attend" && reg.qrCode ? (
+                        <div className="bg-white comic-border p-1 rounded">
+                          <QRCodeCanvas
+                            value={`aayaam-registration:${reg.qrCode}`}
+                            size={72}
+                            level="M"
+                            includeMargin={false}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-[72px] h-[72px] flex items-center justify-center font-bold text-xs uppercase bg-yellow-200 comic-border">
+                          PARTICIPATE
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <div className="font-display text-lg">{reg.eventName}</div>
+                        <div className="text-xs font-bold uppercase text-gray-500">
+                          Mode: {reg.mode === "attend" ? "Attendee (QR)" : "Participant (Unstop)"}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </ComicCard>
           </motion.div>
         </div>
 
-        {/* Main Content - Teams */}
-        <div className="lg:col-span-2 space-y-6">
-          <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex justify-between items-center bg-white comic-border comic-shadow-sm p-4 rounded-xl">
-            <h2 className="font-display text-4xl text-[hsl(var(--tertiary))] text-comic-stroke m-0 flex items-center gap-3">
-              <Users size={32} className="text-black" /> SQUAD ROSTER
-            </h2>
-            <ComicButton variant="secondary" size="sm" onClick={() => setIsCreatingTeam(!isCreatingTeam)}>
-              {isCreatingTeam ? "CANCEL" : <><Plus size={20} className="inline mr-1" /> NEW SQUAD</>}
-            </ComicButton>
-          </motion.div>
-
-          <AnimatePresence>
-            {isCreatingTeam && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
-              >
-                <ComicCard bgVariant="accent" className="mb-6">
-                  <form onSubmit={handleCreateTeam} className="flex flex-col sm:flex-row gap-4 items-end">
-                    <div className="w-full">
-                      <label className="font-display text-xl uppercase block mb-2">Squad Name</label>
-                      <input 
-                        required
-                        value={newTeamName}
-                        onChange={(e) => setNewTeamName(e.target.value)}
-                        className="w-full p-3 border-4 border-black rounded-xl font-bold focus:outline-none focus:ring-4 focus:ring-white bg-white"
-                        placeholder="e.g. The Avengers"
-                      />
-                    </div>
-                    <ComicButton type="submit" variant="white" className="w-full sm:w-auto whitespace-nowrap">
-                      ASSEMBLE!
-                    </ComicButton>
-                  </form>
-                </ComicCard>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {teams.length === 0 ? (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center p-12 bg-gray-100 comic-border rounded-xl border-dashed border-4">
-              <ShieldAlert size={64} className="mx-auto mb-4 text-gray-400" />
-              <h3 className="font-display text-3xl text-gray-500">LONE WOLF DETECTED</h3>
-              <p className="font-bold text-gray-500 mt-2">You haven't joined or created any squads yet.</p>
-            </motion.div>
-          ) : (
-            <div className="grid gap-6">
-              {teams.map((team, index) => (
-                <motion.div 
-                  key={team.id}
-                  initial={{ x: 50, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <ComicCard bgVariant="white" tiltAmount={0} className="overflow-hidden p-0">
-                    <div className="bg-black text-white p-4 flex justify-between items-center border-b-4 border-black">
-                      <h3 className="font-display text-3xl text-[hsl(var(--primary))] tracking-wider">{team.name}</h3>
-                      <span className="font-bold bg-white text-black px-3 py-1 rounded-full text-sm">
-                        {team.members.length} Members
-                      </span>
-                    </div>
-                    
-                    <div className="p-4">
-                      <ul className="space-y-2 mb-6">
-                        {team.members.map((member, i) => (
-                          <li key={i} className="flex justify-between items-center bg-gray-50 p-2 rounded-lg comic-border">
-                            <span className="font-bold text-lg">{member.name}</span>
-                            {member.role === 'Captain' && <Award className="text-[hsl(var(--secondary))]" size={24} />}
-                          </li>
-                        ))}
-                      </ul>
-
-                      {selectedTeamId === team.id ? (
-                        <form onSubmit={(e) => handleAddMember(e, team)} className="flex gap-2">
-                          <input 
-                            required
-                            value={newMemberName}
-                            onChange={(e) => setNewMemberName(e.target.value)}
-                            className="flex-grow p-2 border-2 border-black rounded-lg font-bold"
-                            placeholder="Ally's Name"
-                            autoFocus
-                          />
-                          <ComicButton type="submit" variant="accent" size="sm">Add</ComicButton>
-                          <button type="button" onClick={() => setSelectedTeamId(null)} className="font-bold underline px-2 hover:text-red-500">Cancel</button>
-                        </form>
-                      ) : (
-                        <button 
-                          onClick={() => setSelectedTeamId(team.id)}
-                          className="font-bold text-[hsl(var(--tertiary))] underline hover:text-black transition-colors flex items-center gap-1"
-                        >
-                          <Plus size={16}/> Recruit Ally
-                        </button>
-                      )}
-                    </div>
-                  </ComicCard>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Right column currently unused (no squads) */}
+        <div className="lg:col-span-2 space-y-6" />
       </div>
     </div>
   );

@@ -2,8 +2,8 @@ import { z } from "zod";
 
 export const userSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email"),
-  college: z.string().min(1, "College is required"),
+  email: z.string().email("Invalid email").optional(),
+  college: z.string().min(1, "College is required").default("Unknown"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
   entryId: z.string().optional(),
 });
@@ -35,6 +35,8 @@ export const eventSchema = z.object({
   prize: z.string(),
   rules: z.array(z.string()),
   rounds: z.number(),
+  unstopUrl: z.string().url().optional(),
+  ruleBookUrl: z.string().url().optional(),
 });
 
 export type FestEvent = z.infer<typeof eventSchema>;

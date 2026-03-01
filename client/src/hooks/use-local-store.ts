@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import type { User, Team } from "@shared/schema";
+import type { User } from "@shared/schema";
 
 // Custom hook to manage User state in localStorage
 export function useUser() {
@@ -41,58 +41,4 @@ export function useUser() {
   };
 
   return { user, saveUser, logout, isLoading };
-}
-
-// Custom hook to manage Teams state in localStorage
-export function useTeams() {
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const loadTeams = () => {
-      try {
-        const stored = localStorage.getItem("aayam_teams");
-        if (stored) {
-          setTeams(JSON.parse(stored));
-        } else {
-          setTeams([]);
-        }
-      } catch (e) {
-        console.error("Failed to parse teams", e);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    loadTeams();
-
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === "aayam_teams") {
-        loadTeams();
-      }
-    };
-    
-    window.addEventListener("storage", handleStorage);
-    window.addEventListener("local-storage", loadTeams);
-    return () => {
-      window.removeEventListener("storage", handleStorage);
-      window.removeEventListener("local-storage", loadTeams);
-    };
-  }, []);
-
-  const saveTeam = (newTeam: Team) => {
-    const updated = [...teams, newTeam];
-    localStorage.setItem("aayam_teams", JSON.stringify(updated));
-    setTeams(updated);
-    window.dispatchEvent(new Event("local-storage"));
-  };
-
-  const updateTeam = (updatedTeam: Team) => {
-    const updated = teams.map(t => t.id === updatedTeam.id ? updatedTeam : t);
-    localStorage.setItem("aayam_teams", JSON.stringify(updated));
-    setTeams(updated);
-    window.dispatchEvent(new Event("local-storage"));
-  };
-
-  return { teams, saveTeam, updateTeam, isLoading };
 }
