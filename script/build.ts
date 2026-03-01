@@ -17,7 +17,7 @@ const allowlist = [
   "express-session",
   "jsonwebtoken",
   "memorystore",
-  "multer",
+  // multer is intentionally not bundled to avoid deployment bundling errors
   "nanoid",
   "nodemailer",
   "openai",
