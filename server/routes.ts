@@ -8,6 +8,16 @@ import {
   getEventsCollection,
   getRegistrationsCollection,
 } from "./db";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+// make sure poster upload folder exists
+const uploadDir = path.resolve(__dirname, "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+const upload = multer({ dest: uploadDir });
 
 // in-memory OTP store; each entry is removed or marked used/expired
 interface OtpEntry {
@@ -454,6 +464,7 @@ export async function registerRoutes(
     rounds: z.number().optional(),
     unstopUrl: z.string().optional(),
     ruleBookUrl: z.string().url().optional(),
+    posterUrl: z.string().optional(), // path to uploaded poster image
   });
 
   app.put("/api/events/:id", requireAdmin, async (req, res, next) => {
@@ -503,6 +514,35 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Event not found." });
       }
       res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // upload a poster image for an event, requires admin
+  app.post("/api/events/:id/poster", requireAdmin, upload.single("poster"), async (req, res, next) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      const { ObjectId } = await import("mongodb");
+      let objectId;
+      try {
+        objectId = new ObjectId(req.params.id);
+      } catch {
+        return res.status(400).json({ message: "Invalid event ID." });
+      }
+      const posterPath = `/uploads/${req.file.filename}`;
+      const eventsCollection = getEventsCollection();
+      const result = await eventsCollection.updateOne(
+        { _id: objectId },
+        { $set: { posterUrl: posterPath } },
+      );
+      if (result.matchedCount === 0) {
+        return res.status(404).json({ message: "Event not found." });
+      }
+      const event = await eventsCollection.findOne({ _id: objectId });
+      res.json(event);
     } catch (err) {
       next(err);
     }

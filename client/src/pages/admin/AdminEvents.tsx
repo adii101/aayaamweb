@@ -30,6 +30,7 @@ type DbEvent = {
   rounds: number;
   unstopUrl?: string;
   ruleBookUrl?: string;
+  posterUrl?: string; // path to uploaded poster image
 };
 
 const emptyEvent: Omit<DbEvent, "id"> = {
@@ -43,6 +44,7 @@ const emptyEvent: Omit<DbEvent, "id"> = {
   rounds: 1,
   unstopUrl: "",
   ruleBookUrl: "",
+  posterUrl: "",
 };
 
 export default function AdminEvents() {
@@ -53,6 +55,7 @@ export default function AdminEvents() {
   const [editing, setEditing] = useState<DbEvent | null>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState(emptyEvent);
+  const [posterFile, setPosterFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,6 +85,7 @@ export default function AdminEvents() {
 
   const openEdit = (ev: DbEvent) => {
     setEditing(ev);
+    setPosterFile(null);
     setForm({
       name: ev.name,
       date: ev.date,
@@ -93,6 +97,7 @@ export default function AdminEvents() {
       rounds: ev.rounds,
       unstopUrl: ev.unstopUrl ?? "",
       ruleBookUrl: ev.ruleBookUrl ?? "",
+      posterUrl: ev.posterUrl ?? "",
     });
     setError(null);
   };
@@ -110,6 +115,7 @@ export default function AdminEvents() {
   const openCreate = () => {
     setCreating(true);
     setForm(emptyEvent);
+    setPosterFile(null);
     setError(null);
   };
 
@@ -133,6 +139,23 @@ export default function AdminEvents() {
     setForm((f) => ({ ...f, rules: f.rules.filter((_, j) => j !== i) }));
   };
 
+  const uploadPoster = async (eventId: string) => {
+    if (!posterFile) return;
+    const fd = new FormData();
+    fd.append("poster", posterFile);
+    const res = await fetch(`/api/events/${eventId}/poster`, {
+      method: "POST",
+      body: fd,
+      credentials: "include",
+    });
+    if (!res.ok) {
+      throw new Error("Failed to upload poster");
+    }
+    const updated = await res.json();
+    setForm((f) => ({ ...f, posterUrl: updated.posterUrl }));
+    setPosterFile(null);
+  };
+
   const saveEdit = async () => {
     if (!editing) return;
     setSaving(true);
@@ -145,6 +168,9 @@ export default function AdminEvents() {
         ruleBookUrl: form.ruleBookUrl || undefined,
       };
       await apiRequest("PUT", `/api/events/${editing.id}`, payload);
+      if (posterFile) {
+        await uploadPoster(editing.id);
+      }
       await loadEvents();
       closeModal();
     } catch (e) {
@@ -164,7 +190,11 @@ export default function AdminEvents() {
         unstopUrl: form.unstopUrl || undefined,
         ruleBookUrl: form.ruleBookUrl || undefined,
       };
-      await apiRequest("POST", "/api/events", payload);
+      const res = await apiRequest("POST", "/api/events", payload);
+      const created = await res.json() as DbEvent;
+      if (posterFile) {
+        await uploadPoster(created.id);
+      }
       await loadEvents();
       closeModal();
     } catch (e) {
@@ -247,6 +277,9 @@ export default function AdminEvents() {
         <div className="grid gap-4">
           {events.map((ev) => (
             <ComicCard key={ev.id} bgVariant="white" tiltAmount={0} className="flex flex-wrap items-center justify-between gap-4">
+              {ev.posterUrl && (
+                <img src={ev.posterUrl} alt={ev.name} className="w-full max-h-32 object-cover rounded-md mb-2" />
+              )}
               <div>
                 <h2 className="font-display text-2xl uppercase">{ev.name}</h2>
                 <p className="font-bold text-gray-600 flex items-center gap-2 mt-1">
@@ -334,6 +367,18 @@ export default function AdminEvents() {
                     value={form.description}
                     onChange={(e) => updateForm("description", e.target.value)}
                     className="w-full p-2 border-2 border-black rounded-lg font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="font-display uppercase text-sm block mb-1">Poster image<span className="text-xs text-gray-500 ml-1">(optional)</span></label>
+                  {form.posterUrl && (
+                    <img src={form.posterUrl} alt="poster" className="mb-2 max-h-40 object-contain" />
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setPosterFile(e.target.files?.[0] ?? null)}
+                    className="w-full"
                   />
                 </div>
                 <div>

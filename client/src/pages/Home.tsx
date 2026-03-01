@@ -17,6 +17,7 @@ type DbEvent = {
   rounds: number;
   unstopUrl?: string;
   ruleBookUrl?: string;
+  posterUrl?: string;
 };
 
 const developers = [
@@ -174,6 +175,9 @@ export default function Home() {
                   tiltAmount={index % 2 === 0 ? 3 : -3}
                   className="cursor-pointer h-full flex flex-col"
                 >
+                  {ev.posterUrl && (
+                    <img src={ev.posterUrl} alt={ev.name} className="w-full h-32 object-cover rounded-md mb-2" />
+                  )}
                   <div className="bg-white comic-border px-3 py-1 rounded-full w-fit mb-4 text-sm font-bold uppercase inline-flex items-center gap-2">
                     {ev.type === "Team" ? <Users size={16} /> : <UserIcon size={16} />}
                     {ev.type}

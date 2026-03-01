@@ -37,6 +37,7 @@ export const eventSchema = z.object({
   rounds: z.number(),
   unstopUrl: z.string().url().optional(),
   ruleBookUrl: z.string().url().optional(),
+  posterUrl: z.string().url().optional(),
 });
 
 export type FestEvent = z.infer<typeof eventSchema>;

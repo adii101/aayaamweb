@@ -19,6 +19,12 @@ export async function apiRequest(
     credentials: "include",
   });
 
+  if (res.status === 401) {
+    // session expired or not logged in – send admin to login page
+    window.location.href = "/admin/login";
+    throw new Error("Unauthorized");
+  }
+
   await throwIfResNotOk(res);
   return res;
 }
@@ -33,8 +39,12 @@ export const getQueryFn: <T>(options: {
       credentials: "include",
     });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+    if (res.status === 401) {
+      // navigate to login if admin routes are being accessed
+      window.location.href = "/admin/login";
+      if (unauthorizedBehavior === "returnNull") {
+        return null;
+      }
     }
 
     await throwIfResNotOk(res);

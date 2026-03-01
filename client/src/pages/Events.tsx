@@ -21,6 +21,7 @@ type DbEvent = {
   rounds: number;
   unstopUrl?: string;
   ruleBookUrl?: string;
+  posterUrl?: string;
 };
 
 function toFestEvent(ev: DbEvent): FestEvent {
@@ -36,6 +37,7 @@ function toFestEvent(ev: DbEvent): FestEvent {
     rounds: ev.rounds,
     unstopUrl: ev.unstopUrl,
     ruleBookUrl: ev.ruleBookUrl,
+    posterUrl: ev.posterUrl,
   };
 }
 
@@ -133,6 +135,9 @@ export default function Events() {
             className="cursor-pointer h-full flex flex-col"
             onClick={() => setSelectedEvent(event)}
           >
+            {event.posterUrl && (
+              <img src={event.posterUrl} alt={event.name} className="w-full h-32 object-cover rounded-md mb-2" />
+            )}
             <div className="bg-white comic-border px-3 py-1 rounded-full w-fit mb-4 text-sm font-bold uppercase inline-flex items-center gap-2">
               {event.type === 'Team' ? <Users size={16} /> : <UserIcon size={16} />}
               {event.type}
@@ -187,6 +192,13 @@ export default function Events() {
               </div>
 
               <div className="p-6 space-y-6">
+                {selectedEvent.posterUrl && (
+                  <img
+                    src={selectedEvent.posterUrl}
+                    alt={selectedEvent.name}
+                    className="w-full max-h-48 object-cover rounded-md"
+                  />
+                )}
                 <div className="flex flex-wrap gap-3">
                   <span className="bg-yellow-300 comic-border px-4 py-2 rounded-xl font-bold flex items-center gap-2">
                     <Target size={20} /> {selectedEvent.type}

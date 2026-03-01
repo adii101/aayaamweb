@@ -6,6 +6,7 @@ This repository contains a React frontend and a Node/Express backend for a comic
 
 - User-facing event browsing, rulebook and participation links
 - Admin panel for managing events and rulebook URLs
+- Upload a poster image for each event and display it on the public site
 - OTP-based login (phone) and password-based admin login
 - In-memory OTP store with optional pepper
 - Full Docker support for containerized builds
@@ -17,8 +18,14 @@ This repository contains a React frontend and a Node/Express backend for a comic
 - Node.js (16+)
 - npm or yarn
 - Supabase account and project
+- **new:** `multer` is used for poster uploads; it is included in `package.json`, but if you reinstall dependencies make sure the package is present (`npm install multer`).
 
 ### Configuration
+
+The server serves any files you upload under `/uploads` (a directory is
+created automatically next to the compiled server code).  You can reference
+poster paths returned by the API directly in the frontend.
+
 
 1. Copy `.env.example` to `.env` and fill in the values. **Critical:**
    the `SUPABASE_KEY` **must be the service‑role key**, not the anon/publishable
