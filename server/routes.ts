@@ -1,101 +1,23 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
 import crypto from "crypto";
-import mongoose from "mongoose";
-// nodemailer was previously used for email OTP delivery, but login now uses phone numbers via SMS or console.
-// import nodemailer from "nodemailer"; // kept commented in case future email features are needed
 import { z } from "zod";
+import {
+  connectDb,
+  getUsersCollection,
+  getEventsCollection,
+  getRegistrationsCollection,
+} from "./db";
 
-async function connectMongo() {
-  const uri = process.env.MONGODB_URI;
-
-  if (!uri) {
-    console.warn(
-      "[mongo] MONGODB_URI not set - MongoDB features will be disabled.",
-    );
-    return;
-  }
-
-  if (mongoose.connection.readyState === 1) return;
-
-  await mongoose.connect(uri);
-  console.log("[mongo] connected");
-
-  // Drop old unique email index (causes E11000 when multiple users have email: null)
-  try {
-    await mongoose.connection.collection("users").dropIndex("email_1");
-    console.log("[mongo] dropped email_1 index");
-  } catch {
-    // Index may already be dropped or not exist - ignore
-  }
+// in-memory OTP store; each entry is removed or marked used/expired
+interface OtpEntry {
+  phone: string;
+  codeHash: string;
+  expiresAt: Date;
+  usedAt?: Date;
+  createdAt: Date;
 }
-
-const userSchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true },
-    email: { type: String },
-    college: { type: String, required: true },
-    phone: { type: String, required: true, unique: true },
-    entryId: { type: String },
-  },
-  { timestamps: true },
-);
-
-const eventSchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true },
-    date: { type: String, required: true },
-    description: { type: String, required: true },
-    fullDescription: { type: String, required: true },
-    type: { type: String, enum: ["Solo", "Team"], required: true },
-    prize: { type: String, required: true },
-    rules: [{ type: String, required: true }],
-    rounds: { type: Number, required: true },
-    unstopUrl: { type: String },
-    ruleBookUrl: { type: String },
-  },
-  { timestamps: true },
-);
-
-const UserModel =
-  mongoose.models.User || mongoose.model("User", userSchema, "users");
-const EventModel =
-  mongoose.models.Event || mongoose.model("Event", eventSchema, "events");
-
-const otpSchema = new mongoose.Schema(
-  {
-    phone: { type: String, required: true, index: true },
-    codeHash: { type: String, required: true },
-    expiresAt: { type: Date, required: true, index: true },
-    usedAt: { type: Date },
-    createdAt: { type: Date, required: true, default: () => new Date() },
-  },
-  { timestamps: false },
-);
-
-const OtpModel =
-  mongoose.models.OtpLogin || mongoose.model("OtpLogin", otpSchema, "otp_logins");
-
-const registrationSchema = new mongoose.Schema(
-  {
-    userPhone: { type: String, required: true, index: true },
-    eventId: { type: String, required: true },
-    eventName: { type: String, required: true },
-    mode: {
-      type: String,
-      enum: ["attend", "participate"],
-      required: true,
-    },
-    qrCode: { type: String },
-    qrUsedAt: { type: Date },
-    createdAt: { type: Date, required: true, default: () => new Date() },
-  },
-  { timestamps: false },
-);
-
-const RegistrationModel =
-  mongoose.models.Registration ||
-  mongoose.model("Registration", registrationSchema, "registrations");
+const otpStore: OtpEntry[] = [];
 
 function sha256Hex(input: string) {
   return crypto.createHash("sha256").update(input).digest("hex");
@@ -158,9 +80,13 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express,
 ): Promise<Server> {
-  await connectMongo().catch((err) => {
-    console.error("[mongo] connection error", err);
-  });
+  // Connect to MongoDB
+  try {
+    await connectDb();
+  } catch (err) {
+    console.error("Failed to connect to MongoDB:", err);
+    throw err;
+  }
 
   // Health check
   app.get("/api/health", (_req, res) => {
@@ -217,39 +143,45 @@ export async function registerRoutes(
         return res.status(403).json({ message: "This phone number is not authorized for admin access." });
       }
 
-      if (mongoose.connection.readyState !== 1) {
-        return res.status(503).json({ message: "MongoDB is not connected." });
-      }
-
+      // verify OTP from in-memory store
       const pepper = getOtpPepper();
       const normalizedCode = code.replace(/\s+/g, "");
       const codeHash = sha256Hex(`${normalizedPhone}:${normalizedCode}:${pepper}`);
 
-      const otp = await OtpModel.findOne({
-        phone: normalizedPhone,
-        codeHash,
-        usedAt: { $exists: false },
-        expiresAt: { $gt: new Date() },
-      }).sort({ createdAt: -1 });
-
-      if (!otp) {
-        return res.status(401).json({ message: "Invalid or expired OTP." });
+      // cleanup expired entries
+      const now = new Date();
+      for (const entry of otpStore) {
+        if (entry.expiresAt <= now) entry.usedAt = entry.usedAt || new Date();
       }
 
-      otp.usedAt = new Date();
-      await otp.save();
+      const otpEntry = otpStore.find(
+        (e) =>
+          e.phone === normalizedPhone &&
+          e.codeHash === codeHash &&
+          !e.usedAt &&
+          e.expiresAt > now,
+      );
+      if (!otpEntry) {
+        return res.status(401).json({ message: "Invalid or expired OTP." });
+      }
+      otpEntry.usedAt = new Date();
 
-      let user = await UserModel.findOne({ phone: normalizedPhone });
+      // find or create user via MongoDB
+      const usersCollection = getUsersCollection();
+      let user = await usersCollection.findOne({ phone: normalizedPhone });
+
       if (!user) {
-        user = await UserModel.create({
+        const result = await usersCollection.insertOne({
           name: "Adi",
           college: "Unknown",
           phone: normalizedPhone,
+          createdAt: new Date(),
         });
+        user = await usersCollection.findOne({ _id: result.insertedId });
       }
 
       req.session!.admin = true;
-      return res.json({ ok: true, name: user.name });
+      return res.json({ ok: true, name: user?.name });
     } catch (err) {
       next(err);
     }
@@ -262,20 +194,11 @@ export async function registerRoutes(
       const { phone } = bodySchema.parse(req.body);
       const normalized = normalizePhone(phone);
 
-      if (mongoose.connection.readyState !== 1) {
-        return res.status(503).json({
-          message:
-            "MongoDB is not connected. Set MONGODB_URI and restart the server.",
-        });
-      }
-
-      // Basic rate limit: 1 OTP per phone number per 60 seconds
-      // lean() return type sometimes confuses TS; cast to any so we can read
-      // createdAt without a complaint.
-      const last: any = await OtpModel.findOne({ phone: normalized })
-        .sort({ createdAt: -1 })
-        .lean();
-      if (last && Date.now() - new Date(last.createdAt).getTime() < 60_000) {
+      // rate limit: check recent entry in otpStore
+      const lastEntry = otpStore
+        .filter((e) => e.phone === normalized)
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+      if (lastEntry && Date.now() - lastEntry.createdAt.getTime() < 60_000) {
         return res.status(429).json({ message: "Please wait before requesting another OTP." });
       }
 
@@ -284,12 +207,7 @@ export async function registerRoutes(
       const codeHash = sha256Hex(`${normalized}:${code}:${pepper}`);
       const expiresAt = new Date(Date.now() + 10 * 60_000);
 
-      await OtpModel.create({
-        phone: normalized,
-        codeHash,
-        expiresAt,
-        createdAt: new Date(),
-      });
+      otpStore.push({ phone: normalized, codeHash, expiresAt, createdAt: new Date() });
 
       // In a real system you would send this via SMS.
       // For now, log it in dev so you can see it.
@@ -311,48 +229,47 @@ export async function registerRoutes(
       const normalizedPhone = normalizePhone(phone);
       const normalizedCode = code.replace(/\s+/g, "");
 
-      if (mongoose.connection.readyState !== 1) {
-        return res.status(503).json({
-          message:
-            "MongoDB is not connected. Set MONGODB_URI and restart the server.",
-        });
-      }
-
+      // verify OTP using otpStore
       const pepper = getOtpPepper();
       const codeHash = sha256Hex(`${normalizedPhone}:${normalizedCode}:${pepper}`);
-
-      const otp = await OtpModel.findOne({
-        phone: normalizedPhone,
-        codeHash,
-        usedAt: { $exists: false },
-        expiresAt: { $gt: new Date() },
-      }).sort({ createdAt: -1 });
-
-      if (!otp) {
+      const now = new Date();
+      const otpEntry = otpStore.find(
+        (e) =>
+          e.phone === normalizedPhone &&
+          e.codeHash === codeHash &&
+          !e.usedAt &&
+          e.expiresAt > now,
+      );
+      if (!otpEntry) {
         return res.status(401).json({ message: "Invalid or expired OTP." });
       }
+      otpEntry.usedAt = new Date();
 
-      otp.usedAt = new Date();
-      await otp.save();
+      // upsert user in MongoDB
+      const usersCollection = getUsersCollection();
+      let user = await usersCollection.findOne({ phone: normalizedPhone });
 
-      // Create user if doesn't exist; otherwise update missing fields
-      const existing = await UserModel.findOne({ phone: normalizedPhone });
-      if (existing) {
-        if (name && !existing.name) existing.name = name;
-        if (phone && !existing.phone) existing.phone = phone;
-        await existing.save();
-        return res.json({ ok: true, user: existing.toObject() });
+      if (user) {
+        const updates: any = {};
+        if (name && !user.name) updates.name = name;
+        if (Object.keys(updates).length > 0) {
+          await usersCollection.updateOne(
+            { phone: normalizedPhone },
+            { $set: updates },
+          );
+          user = await usersCollection.findOne({ phone: normalizedPhone });
+        }
+      } else {
+        const derivedName = name || "User";
+        const result = await usersCollection.insertOne({
+          name: derivedName,
+          college: "Unknown",
+          phone: normalizedPhone,
+          createdAt: new Date(),
+        });
+        user = await usersCollection.findOne({ _id: result.insertedId });
       }
-
-      const derivedName = name || "User";
-      const created = await UserModel.create({
-        name: derivedName,
-        college: "Unknown",
-        phone: normalizedPhone,
-        entryId: undefined,
-      });
-
-      return res.json({ ok: true, user: created.toObject() });
+      return res.json({ ok: true, user });
     } catch (err) {
       next(err);
     }
@@ -370,36 +287,39 @@ export async function registerRoutes(
       const { phone, eventId, eventName, mode } = bodySchema.parse(req.body);
       const normalizedPhone = normalizePhone(phone);
 
-      if (mongoose.connection.readyState !== 1) {
-        return res.status(503).json({
-          message:
-            "MongoDB is not connected. Set MONGODB_URI and restart the server.",
-        });
-      }
-
-      let reg: any;
-
+      let reg;
+      const registrationsCollection = getRegistrationsCollection();
+      
       if (mode === "attend") {
-        // Only one active QR per user per event. If they register again, reuse the existing one.
-        reg =
-          (await RegistrationModel.findOne({
-            userPhone: normalizedPhone,
-            eventId,
-            mode: "attend",
-          })) ||
-          (await RegistrationModel.create({
+        reg = await registrationsCollection.findOne({
+          userPhone: normalizedPhone,
+          eventId,
+          mode: "attend",
+        });
+        
+        if (!reg) {
+          const result = await registrationsCollection.insertOne({
             userPhone: normalizedPhone,
             eventId,
             eventName,
             mode: "attend",
             qrCode: crypto.randomUUID(),
-          }));
+            createdAt: new Date(),
+          });
+          reg = await registrationsCollection.findOne({
+            _id: result.insertedId,
+          });
+        }
       } else {
-        reg = await RegistrationModel.create({
+        const result = await registrationsCollection.insertOne({
           userPhone: normalizedPhone,
           eventId,
           eventName,
           mode,
+          createdAt: new Date(),
+        });
+        reg = await registrationsCollection.findOne({
+          _id: result.insertedId,
         });
       }
 
@@ -423,19 +343,12 @@ export async function registerRoutes(
       }
       const normalizedPhone = normalizePhone(raw);
 
-      if (mongoose.connection.readyState !== 1) {
-        return res.status(503).json({
-          message:
-            "MongoDB is not connected. Set MONGODB_URI and restart the server.",
-        });
-      }
-
-      const regs = await RegistrationModel.find({
-        userPhone: normalizedPhone,
-      })
+      const registrationsCollection = getRegistrationsCollection();
+      const regs = await registrationsCollection
+        .find({ userPhone: normalizedPhone })
         .sort({ createdAt: -1 })
-        .lean();
-
+        .toArray();
+      
       return res.json(regs);
     } catch (err) {
       next(err);
@@ -451,14 +364,8 @@ export async function registerRoutes(
       });
       const { qr, markUsed } = bodySchema.parse(req.body);
 
-      if (mongoose.connection.readyState !== 1) {
-        return res.status(503).json({
-          message:
-            "MongoDB is not connected. Set MONGODB_URI and restart the server.",
-        });
-      }
-
-      const reg = await RegistrationModel.findOne({
+      const registrationsCollection = getRegistrationsCollection();
+      const reg = await registrationsCollection.findOne({
         qrCode: qr,
         mode: "attend",
       });
@@ -466,21 +373,20 @@ export async function registerRoutes(
       if (!reg) {
         return res.status(404).json({ valid: false, reason: "NOT_FOUND" });
       }
-
       if (reg.qrUsedAt) {
         return res.status(410).json({ valid: false, reason: "ALREADY_USED" });
       }
-
       if (markUsed) {
-        reg.qrUsedAt = new Date();
-        await reg.save();
+        await registrationsCollection.updateOne(
+          { qrCode: qr },
+          { $set: { qrUsedAt: new Date() } },
+        );
       }
-
       return res.json({
         valid: true,
         eventId: reg.eventId,
         eventName: reg.eventName,
-        userPhone: reg.userPhone, // return phone in QR validation instead of legacy email field
+        userPhone: reg.userPhone,
       });
     } catch (err) {
       next(err);
@@ -490,7 +396,12 @@ export async function registerRoutes(
   // Users
   app.post("/api/users", async (req, res, next) => {
     try {
-      const user = await UserModel.create(req.body);
+      const usersCollection = getUsersCollection();
+      const result = await usersCollection.insertOne({
+        ...req.body,
+        createdAt: new Date(),
+      });
+      const user = await usersCollection.findOne({ _id: result.insertedId });
       res.status(201).json(user);
     } catch (err) {
       next(err);
@@ -499,7 +410,8 @@ export async function registerRoutes(
 
   app.get("/api/users", async (_req, res, next) => {
     try {
-      const users = await UserModel.find().lean();
+      const usersCollection = getUsersCollection();
+      const users = await usersCollection.find({}).toArray();
       res.json(users);
     } catch (err) {
       next(err);
@@ -509,10 +421,8 @@ export async function registerRoutes(
   // Events (public read; create/update/delete require admin)
   app.get("/api/events", async (_req, res, next) => {
     try {
-      if (mongoose.connection.readyState !== 1) {
-        return res.status(503).json({ message: "MongoDB is not connected." });
-      }
-      const events = await EventModel.find().lean();
+      const eventsCollection = getEventsCollection();
+      const events = await eventsCollection.find({}).toArray();
       res.json(events);
     } catch (err) {
       next(err);
@@ -521,10 +431,12 @@ export async function registerRoutes(
 
   app.post("/api/events", requireAdmin, async (req, res, next) => {
     try {
-      if (mongoose.connection.readyState !== 1) {
-        return res.status(503).json({ message: "MongoDB is not connected." });
-      }
-      const event = await EventModel.create(req.body);
+      const eventsCollection = getEventsCollection();
+      const result = await eventsCollection.insertOne({
+        ...req.body,
+        createdAt: new Date(),
+      });
+      const event = await eventsCollection.findOne({ _id: result.insertedId });
       res.status(201).json(event);
     } catch (err) {
       next(err);
@@ -546,16 +458,27 @@ export async function registerRoutes(
 
   app.put("/api/events/:id", requireAdmin, async (req, res, next) => {
     try {
-      if (mongoose.connection.readyState !== 1) {
-        return res.status(503).json({ message: "MongoDB is not connected." });
-      }
       const updates = eventUpdateSchema.parse(req.body);
-      const event = await EventModel.findByIdAndUpdate(
-        req.params.id,
+      const eventsCollection = getEventsCollection();
+      const { ObjectId } = await import("mongodb");
+      
+      let objectId;
+      try {
+        objectId = new ObjectId(req.params.id);
+      } catch {
+        return res.status(400).json({ message: "Invalid event ID." });
+      }
+
+      const result = await eventsCollection.updateOne(
+        { _id: objectId },
         { $set: updates },
-        { new: true },
       );
-      if (!event) return res.status(404).json({ message: "Event not found." });
+
+      if (result.matchedCount === 0) {
+        return res.status(404).json({ message: "Event not found." });
+      }
+
+      const event = await eventsCollection.findOne({ _id: objectId });
       res.json(event);
     } catch (err) {
       next(err);
@@ -564,11 +487,21 @@ export async function registerRoutes(
 
   app.delete("/api/events/:id", requireAdmin, async (req, res, next) => {
     try {
-      if (mongoose.connection.readyState !== 1) {
-        return res.status(503).json({ message: "MongoDB is not connected." });
+      const eventsCollection = getEventsCollection();
+      const { ObjectId } = await import("mongodb");
+      
+      let objectId;
+      try {
+        objectId = new ObjectId(req.params.id);
+      } catch {
+        return res.status(400).json({ message: "Invalid event ID." });
       }
-      const result = await EventModel.findByIdAndDelete(req.params.id);
-      if (!result) return res.status(404).json({ message: "Event not found." });
+
+      const result = await eventsCollection.deleteOne({ _id: objectId });
+      
+      if (result.deletedCount === 0) {
+        return res.status(404).json({ message: "Event not found." });
+      }
       res.json({ ok: true });
     } catch (err) {
       next(err);

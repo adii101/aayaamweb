@@ -6,7 +6,7 @@ import { ComicCard } from "@/components/ComicCard";
 import { Linkedin, Instagram, Users, User as UserIcon } from "lucide-react";
 
 type DbEvent = {
-  _id: string;
+  id: string;
   name: string;
   date: string;
   description: string;
@@ -167,7 +167,7 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {events.map((ev, index) => (
-              <Link key={ev._id} href="/events" className="block h-full">
+              <Link key={ev.id} href="/events" className="block h-full">
                 <ComicCard
                   bgVariant={colors[index % colors.length]}
                   interactive

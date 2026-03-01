@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 type DbEvent = {
-  _id: string;
+  id: string;
   name: string;
   date: string;
   description: string;
@@ -32,7 +32,7 @@ type DbEvent = {
   ruleBookUrl?: string;
 };
 
-const emptyEvent: Omit<DbEvent, "_id"> = {
+const emptyEvent: Omit<DbEvent, "id"> = {
   name: "",
   date: "",
   description: "",
@@ -144,7 +144,7 @@ export default function AdminEvents() {
         unstopUrl: form.unstopUrl || undefined,
         ruleBookUrl: form.ruleBookUrl || undefined,
       };
-      await apiRequest("PUT", `/api/events/${editing._id}`, payload);
+      await apiRequest("PUT", `/api/events/${editing.id}`, payload);
       await loadEvents();
       closeModal();
     } catch (e) {
@@ -246,7 +246,7 @@ export default function AdminEvents() {
       ) : (
         <div className="grid gap-4">
           {events.map((ev) => (
-            <ComicCard key={ev._id} bgVariant="white" tiltAmount={0} className="flex flex-wrap items-center justify-between gap-4">
+            <ComicCard key={ev.id} bgVariant="white" tiltAmount={0} className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h2 className="font-display text-2xl uppercase">{ev.name}</h2>
                 <p className="font-bold text-gray-600 flex items-center gap-2 mt-1">
@@ -263,7 +263,7 @@ export default function AdminEvents() {
                 <ComicButton variant="accent" size="sm" onClick={() => openRules(ev)} className="flex items-center gap-2">
                   <Book size={16} /> Rulebook
                 </ComicButton>
-                <ComicButton variant="destructive" size="sm" onClick={() => deleteEvent(ev._id)} className="flex items-center gap-2">
+                <ComicButton variant="destructive" size="sm" onClick={() => deleteEvent(ev.id)} className="flex items-center gap-2">
                   <Trash2 size={16} /> Delete
                 </ComicButton>
               </div>
@@ -399,7 +399,7 @@ export default function AdminEvents() {
                 </div>
                 <div className="flex gap-4 pt-4">
                   {editing && (
-                    <ComicButton variant="destructive" onClick={() => editing && deleteEvent(editing._id)} disabled={saving}>
+                    <ComicButton variant="destructive" onClick={() => editing && deleteEvent(editing.id)} disabled={saving}>
                       Delete
                     </ComicButton>
                   )}

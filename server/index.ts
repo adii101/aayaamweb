@@ -115,5 +115,16 @@ app.use((req, res, next) => {
     () => {
       log(`serving on port ${port}`);
     },
-  );
+  )
+  .on("error", (err: any) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(
+        `Port ${port} is already in use. You can set a different port by ` +
+          "exporting PORT in the environment or stop the process using that port."
+      );
+    } else {
+      console.error("Server error:", err);
+    }
+    process.exit(1);
+  });
 })();

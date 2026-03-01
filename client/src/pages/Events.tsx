@@ -10,7 +10,7 @@ import { useUser } from "@/hooks/use-local-store";
 import { apiRequest } from "@/lib/queryClient";
 
 type DbEvent = {
-  _id: string;
+  id: string;
   name: string;
   date: string;
   description: string;
@@ -25,7 +25,7 @@ type DbEvent = {
 
 function toFestEvent(ev: DbEvent): FestEvent {
   return {
-    id: ev._id,
+    id: ev.id,
     name: ev.name,
     date: ev.date,
     description: ev.description,

@@ -10,7 +10,7 @@ import { QRCodeCanvas } from "qrcode.react";
 type RegistrationMode = "attend" | "participate";
 
 type Registration = {
-  _id: string;
+  id: string;                 // MongoDB auto-generated _id
   eventId: string;
   eventName: string;
   mode: RegistrationMode;
@@ -101,7 +101,7 @@ export default function Dashboard() {
                 <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
                   {registrations.map((reg) => (
                     <div
-                      key={reg._id}
+                      key={reg.id}
                       className="flex gap-3 items-center bg-gray-50 comic-border rounded-xl p-3"
                     >
                       {reg.mode === "attend" && reg.qrCode ? (
