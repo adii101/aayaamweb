@@ -18,7 +18,16 @@ This repository contains a React frontend and a Node/Express backend for a comic
 - Node.js (16+)
 - npm or yarn
 - Supabase account and project
-- **new:** `multer` is used for poster uploads; it is included in `package.json`, but if you reinstall dependencies make sure the package is present (`npm install multer`).
+- **new:** `multer` is used for poster uploads; it is included in `package.json`, but if you reinstall dependencies make sure the package is present (`npm install multer`).  
+  When deploying to a service that bundles your server code (Render, Vercel, etc.)
+  the build may try to resolve `multer` and fail if the dependency isn’t installed
+  or if the bundler doesn’t know to leave it external.  Our `script/build.ts`
+  already marks `multer` as external, but you must also commit & push the
+  updated `package.json` so the remote build sees it.  If you see an error like
+  `ERROR: Could not resolve "multer"` make sure the build command runs from the
+  sub‑directory containing the project and that `npm install` ran successfully
+  before `npm run build`.  You can also explicitly add `multer` to the `external`
+  list in `script/build.ts` as shown above.
 
 ### Configuration
 

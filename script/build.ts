@@ -44,7 +44,15 @@ async function buildAll() {
     ...Object.keys(pkg.dependencies || {}),
     ...Object.keys(pkg.devDependencies || {}),
   ];
-  const externals = allDeps.filter((dep) => !allowlist.includes(dep));
+  // ensure multer is listed as an external dependency even if the
+// package.json on the build host is stale or missing it.  we intentionally
+// don't bundle multer because the runtime environment (Render, Vercel, etc.)
+// may install it separately and the module itself performs filesystem
+// operations that break when bundled.
+const externals = [
+  "multer", // always external
+  ...allDeps.filter((dep) => !allowlist.includes(dep)),
+];
 
   await esbuild({
     entryPoints: ["server/index.ts"],
